@@ -16,7 +16,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 # ----------------- НАСТРОЙКИ -----------------
 TOKEN = "7512515821:AAGKP4iysC3YfmZ9zje7NS2VstyazOm0dD0"
-ADMIN_IDS = [7817856373, 7822572763]
+ADMIN_IDS = [7817856373, 966731654]
 CHANNEL_ID = "-1003157439297"
 BANK_CARD = "2204 1201 3108 2352"
 BANK_NAME = "ЮMoney bank"
