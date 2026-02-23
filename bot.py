@@ -16,9 +16,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 
 # ----------------- НАСТРОЙКИ -----------------
-TOKEN = "8254370925:AAEqeWrymXKxZTfDyr3yeFeyuVJwPEUov1M"
+TOKEN = "7512515821:AAGKP4iysC3YfmZ9zje7NS2VstyazOm0dD0"
 ADMIN_IDS = [7817856373, 966731654]
-CHANNEL_ID = "-1003808037068"
+CHANNEL_ID = "-1003157439297"
 BOT_NAME = "Убежище Х"
 SEARCH_COST = 10  # Стоимость поиска в Coins
 
@@ -1373,4 +1373,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
