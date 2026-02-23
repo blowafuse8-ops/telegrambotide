@@ -16,13 +16,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 
 # ----------------- НАСТРОЙКИ -----------------
-TOKEN = "7512515821:AAGKP4iysC3YfmZ9zje7NS2VstyazOm0dD0"
+TOKEN = "8254370925:AAEqeWrymXKxZTfDyr3yeFeyuVJwPEUov1M"
 ADMIN_IDS = [7817856373, 966731654]
-CHANNEL_ID = "-1003157439297"
-BANK_CARD = "2204 1201 3108 2352"
-BANK_NAME = "ЮMoney bank"
+CHANNEL_ID = "-1003808037068"
 BOT_NAME = "Убежище Х"
-SEARCH_COST = 10  # Стоимость поиска в Coins (обновлено с 20 на 10)
+SEARCH_COST = 10  # Стоимость поиска в Coins
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
@@ -53,21 +51,6 @@ def init_db():
         status TEXT,
         media_type TEXT,
         media_ids TEXT,
-        created_at TEXT,
-        moderated_by INTEGER,
-        moderated_at TEXT
-    )
-    """)
-
-    # Таблица платежей
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS payments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        amount_coins INTEGER,
-        price INTEGER,
-        status TEXT,
-        screenshot TEXT,
         created_at TEXT,
         moderated_by INTEGER,
         moderated_at TEXT
@@ -117,14 +100,6 @@ def init_db():
         pass
     try:
         cur.execute("ALTER TABLE posts ADD COLUMN moderated_at TEXT")
-    except:
-        pass
-    try:
-        cur.execute("ALTER TABLE payments ADD COLUMN moderated_by INTEGER")
-    except:
-        pass
-    try:
-        cur.execute("ALTER TABLE payments ADD COLUMN moderated_at TEXT")
     except:
         pass
 
@@ -204,12 +179,6 @@ def get_stats() -> dict:
     cur.execute("SELECT SUM(balance) FROM users")
     total_coins = cur.fetchone()[0] or 0
     
-    cur.execute("SELECT COUNT(*) FROM payments WHERE status='approved'")
-    total_payments = cur.fetchone()[0]
-    
-    cur.execute("SELECT SUM(amount_coins) FROM payments WHERE status='approved'")
-    coins_sold = cur.fetchone()[0] or 0
-    
     cur.execute("SELECT COUNT(*) FROM search_requests")
     total_searches = cur.fetchone()[0]
     
@@ -224,8 +193,6 @@ def get_stats() -> dict:
         "approved_posts": approved_posts,
         "pending_posts": pending_posts,
         "total_coins": total_coins,
-        "total_payments": total_payments,
-        "coins_sold": coins_sold,
         "total_searches": total_searches,
         "pending_searches": pending_searches
     }
@@ -237,10 +204,6 @@ class PostState(StatesGroup):
 class QuestionState(StatesGroup):
     waiting_for_question = State()
     waiting_for_answer = State()
-
-class BuyCoinsState(StatesGroup):
-    waiting_for_amount = State()
-    waiting_for_screenshot = State()
 
 class DeletePostState(StatesGroup):
     waiting_for_info = State()
@@ -283,14 +246,6 @@ def search_menu():
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")]
     ])
 
-def payment_admin_markup(payment_id: int):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"payment_approve_{payment_id}"),
-            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"payment_reject_{payment_id}")
-        ]
-    ])
-
 def moderation_markup(post_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -315,11 +270,10 @@ def search_request_admin_markup(request_id: int):
         ]
     ])
 
-# ИЗМЕНЕНО: меню баланса с новой кнопкой "Заработать Coins"
+# ИЗМЕНЕНО: меню баланса без кнопки "Купить Coins"
 def balance_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 Купить Coins", callback_data="balance_buy")],
-        [InlineKeyboardButton(text="💰 Заработать Coins", callback_data="balance_earn")],  # НОВАЯ КНОПКА
+        [InlineKeyboardButton(text="💰 Заработать Coins", callback_data="balance_earn")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")]
     ])
 
@@ -372,9 +326,9 @@ async def search_photo(cb: CallbackQuery, state: FSMContext):
             f"❌ У вас недостаточно Coins.\n\n"
             f"💰 Баланс: {balance} Coins\n"
             f"💎 Нужно: {SEARCH_COST} Coins\n\n"
-            f"Купите или заработайте Coins:",
+            f"Заработайте Coins, предлагая посты в канал!",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💰 Купить Coins", callback_data="menu_balance")],
+                [InlineKeyboardButton(text="💰 Заработать Coins", callback_data="balance_earn")],
                 [InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_search")]
             ])
         )
@@ -487,9 +441,9 @@ async def search_text(cb: CallbackQuery, state: FSMContext):
             f"❌ У вас недостаточно Coins.\n\n"
             f"💰 Баланс: {balance} Coins\n"
             f"💎 Нужно: {SEARCH_COST} Coins\n\n"
-            f"Купите или заработайте Coins:",
+            f"Заработайте Coins, предлагая посты в канал!",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💰 Купить Coins", callback_data="menu_balance")],
+                [InlineKeyboardButton(text="💰 Заработать Coins", callback_data="balance_earn")],
                 [InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_search")]
             ])
         )
@@ -738,8 +692,6 @@ async def admin_stats(cb: CallbackQuery):
         f"✅ Одобрено: <b>{stats['approved_posts']}</b>\n"
         f"⏳ В очереди: <b>{stats['pending_posts']}</b>\n"
         f"💰 Всего Coins в обороте: <b>{stats['total_coins']}</b>\n"
-        f"💳 Продано Coins: <b>{stats['coins_sold']}</b>\n"
-        f"🔄 Всего оплат: <b>{stats['total_payments']}</b>\n"
         f"🔍 Заявок на поиск: <b>{stats['total_searches']}</b>\n"
         f"⏳ Ожидают ответа: <b>{stats['pending_searches']}</b>"
     )
@@ -1134,8 +1086,8 @@ async def post_delete_start(cb: CallbackQuery, state: FSMContext):
     cost = 5
     if bal < cost:
         await cb.message.edit_text(
-            f"⚠️ У вас недостаточно средств для подачи заявки на удаление.\n\nБаланс: {bal} Coins\nНе хватает: {cost - bal} Coins",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_post")]])
+            f"⚠️ У вас недостаточно средств для подачи заявки на удаление.\n\nБаланс: {bal} Coins\nНе хватает: {cost - bal} Coins\n\nЗаработайте Coins, предлагая посты в канал!",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="💰 Заработать Coins", callback_data="balance_earn")], [InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_post")]])
         )
         await cb.answer()
         return
@@ -1310,7 +1262,7 @@ async def balance_earn(cb: CallbackQuery):
     )
     await cb.answer()
 
-# ----------------- БАЛАНС / ПОКУПКА COINS -----------------
+# ----------------- БАЛАНС -----------------
 @dp.callback_query(F.data == "menu_balance")
 async def menu_balance(cb: CallbackQuery):
     register_user(cb.from_user.id, cb.from_user.username)
@@ -1318,158 +1270,6 @@ async def menu_balance(cb: CallbackQuery):
     text = f"💎 Ваш баланс: <b>{bal} Coins</b>"
     await cb.message.edit_text(text, reply_markup=balance_menu())
     await cb.answer()
-
-@dp.callback_query(F.data == "balance_buy")
-async def balance_buy(cb: CallbackQuery, state: FSMContext):
-    await cb.message.edit_text("Введите количество Coins для покупки (1 Coin = 50 ₽, максимум 100):")
-    await state.set_state(BuyCoinsState.waiting_for_amount)
-    await cb.answer()
-
-@dp.message(BuyCoinsState.waiting_for_amount)
-async def handle_amount(message: Message, state: FSMContext):
-    try:
-        amount = int(message.text.strip())
-    except:
-        return await message.answer("Введите число от 1 до 100.")
-
-    if amount < 1 or amount > 100:
-        return await message.answer("⚠️ Можно купить от 1 до 100 Coins.")
-
-    price = amount * 50
-    await state.update_data(amount_coins=amount, price=price)
-    await state.set_state(BuyCoinsState.waiting_for_screenshot)
-
-    await message.answer(
-        f"💳 <b>Оплата</b>\n\n"
-        f"Сумма: <b>{price} ₽</b>\n"
-        f"Количество: <b>{amount} Coins</b>\n\n"
-        f"Переведите деньги на карту:\n<code>{BANK_CARD}</code> — {BANK_NAME}\n"
-        "В комментарии укажите свой @username или ID.\n\n"
-        "📸 После перевода отправьте скриншот сюда."
-    )
-
-@dp.message(BuyCoinsState.waiting_for_screenshot, F.photo)
-async def handle_screenshot(message: Message, state: FSMContext):
-    data = await state.get_data()
-    amount = data.get("amount_coins", 0)
-    price = data.get("price", 0)
-    screenshot_id = message.photo[-1].file_id
-    created = datetime.now(timezone.utc).isoformat()
-
-    conn = sqlite3.connect("bot.db")
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO payments (user_id, amount_coins, price, status, screenshot, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (message.from_user.id, amount, price, "pending", screenshot_id, created)
-    )
-    pid = cur.lastrowid
-    conn.commit()
-    conn.close()
-
-    await message.answer(
-        "✅ Ваш запрос принят на проверку. Ожидайте подтверждения администратора.",
-        reply_markup=main_menu()
-    )
-    await state.clear()
-
-    markup = payment_admin_markup(pid)
-    username = message.from_user.username
-    pretty_user = f"@{username}" if username else str(message.from_user.id)
-    caption = (
-        f"💰 <b>Новый платёж</b>\n\n"
-        f"👤 Пользователь: {pretty_user}\n"
-        f"💎 Coins: {amount}\n"
-        f"💳 Сумма: {price} ₽\n"
-        f"🆔 ID платежа: {pid}\n\n"
-        f"Нажмите ✅ чтобы подтвердить и зачислить Coins, или ❌ чтобы отклонить."
-    )
-    for admin in ADMIN_IDS:
-        try:
-            await bot.send_photo(admin, screenshot_id, caption=caption, reply_markup=markup)
-        except:
-            try:
-                await bot.send_message(admin, caption, reply_markup=markup)
-            except:
-                pass
-
-@dp.callback_query(F.data.startswith("payment_approve_"))
-async def payment_approve(cb: CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("Нет доступа", show_alert=True)
-        return
-
-    pid = int(cb.data.split("_")[-1])
-    conn = sqlite3.connect("bot.db")
-    cur = conn.cursor()
-    cur.execute("SELECT user_id, amount_coins, status FROM payments WHERE id=?", (pid,))
-    payment = cur.fetchone()
-    if not payment:
-        await cb.answer("Платёж не найден.", show_alert=True)
-        conn.close()
-        return
-
-    user_id, amount, status = payment
-    if status != "pending":
-        await cb.answer("Этот платёж уже обработан.", show_alert=True)
-        conn.close()
-        return
-
-    update_balance(user_id, amount)
-    cur.execute("UPDATE payments SET status='approved', moderated_by=?, moderated_at=? WHERE id=?", 
-                (cb.from_user.id, datetime.now(timezone.utc).isoformat(), pid))
-    conn.commit()
-    conn.close()
-
-    try:
-        await bot.send_message(user_id, f"✅ Ваш платёж подтвержден! Вам зачислено {amount} Coins.")
-    except:
-        pass
-
-    try:
-        await cb.message.edit_reply_markup(reply_markup=None)
-    except:
-        pass
-
-    await cb.answer("Платёж подтверждён ✅")
-
-@dp.callback_query(F.data.startswith("payment_reject_"))
-async def payment_reject(cb: CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("Нет доступа", show_alert=True)
-        return
-
-    pid = int(cb.data.split("_")[-1])
-    conn = sqlite3.connect("bot.db")
-    cur = conn.cursor()
-    cur.execute("SELECT user_id, status FROM payments WHERE id=?", (pid,))
-    payment = cur.fetchone()
-    if not payment:
-        await cb.answer("Платёж не найден.", show_alert=True)
-        conn.close()
-        return
-
-    user_id, status = payment
-    if status != "pending":
-        await cb.answer("Этот платёж уже обработан.", show_alert=True)
-        conn.close()
-        return
-
-    cur.execute("UPDATE payments SET status='rejected', moderated_by=?, moderated_at=? WHERE id=?", 
-                (cb.from_user.id, datetime.now(timezone.utc).isoformat(), pid))
-    conn.commit()
-    conn.close()
-
-    try:
-        await bot.send_message(user_id, "❌ Ваш запрос отклонен.")
-    except:
-        pass
-
-    try:
-        await cb.message.edit_reply_markup(reply_markup=None)
-    except:
-        pass
-
-    await cb.answer("Платёж отклонён ❌")
 
 # ----------------- ВОПРОСЫ -----------------
 @dp.callback_query(F.data == "help_question")
@@ -1568,6 +1368,7 @@ async def main():
     print("💰 За одобренный пост начисляется 1 Coin")
     print(f"🔍 Поиск людей: {SEARCH_COST} Coins")
     print("✅ Кнопки всегда активны, /start не нужен")
+    print("⚠️ Платежная система полностью удалена")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
